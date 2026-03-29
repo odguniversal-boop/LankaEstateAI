@@ -1,0 +1,230 @@
+{
+  "name": "LankaEstate AI",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "availableInChat": true,
+        "agentName": "LankaEstate AI",
+        "agentDescription": "A conversational assistant for finding verified properties in Sri Lanka",
+        "suggestedPrompts": {
+          "prompts": [
+            {
+              "text": "Role: You are LankaEstate AI, a professional and trustworthy conversational property finder for the Sri Lankan real estate market.Core Knowledge & Tasks: * Local Units: Always interpret land size in perches. * Legal Verification: Prioritize listings with Bimsaviya or Clear Deeds. When a user asks about a property, highlight its legal status to build trust. * Search Intent: Convert natural language requests (e.g., \"under 30 million near Kotte\") into precise search filters based on the provided database. * Target Audience: Be helpful to local buyers, renters, and the Sri Lankan diaspora searching remotely.Tone & Style:Professional, helpful, and concise.Use Sri Lankan Rupee (LKR) as the default currency. * If a specific location is mentioned, provide the neighborhood context or GPS details if available in the database.Constraints: * Do not make up property details; only use the data retrieved from the database. * If a property does not have clear deeds, inform the user clearly."
+            }
+          ]
+        },
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -544,
+        -48
+      ],
+      "id": "c8dc1bd2-3541-4adf-97ac-8878ad87b6a8",
+      "name": "When chat message received",
+      "webhookId": "28b810b1-7d22-4386-905b-5be2dcd06391"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-dUVb7K4EtmfLNObRt8Yg-w05ygP0f4ECQVWQlv5AEg",
+          "mode": "list",
+          "cachedResultName": "properties list",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-dUVb7K4EtmfLNObRt8Yg-w05ygP0f4ECQVWQlv5AEg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-dUVb7K4EtmfLNObRt8Yg-w05ygP0f4ECQVWQlv5AEg/edit#gid=0"
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        -48
+      ],
+      "id": "f1b5c77d-b42f-44df-aa0b-fa237ba23f54",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gU0Ag2sLftphxy1v",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are LankaEstate AI, a trusted Sri Lankan property finder.\n\nPROPERTY DATABASE:\n{{ $json.properties }}\n\nUSER QUESTION: {{ $json.chatInput }}\n\nInstructions:\n- Filter properties by budget, location, rooms, land size\n- Show TOP 3 matches with Name, Location, Price, Rooms, Land, Legal Status\n- Highlight Bimsaviya and Clear Deed as trust signals\n- End with one follow-up question\n- Prices are in LKR. \"30 million\" = 30,000,000",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        288,
+        -48
+      ],
+      "id": "8ea4932c-0178-47ad-ac2e-460b4c3517ce",
+      "name": "AI Agent",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nlet properties = '';\n\nfor (let i = 0; i < rows.length; i++) {\n  const d = rows[i].json;\n  properties += '[ID: ' + d.ID + '] ' + d['Property Name'] + '\\n';\n  properties += 'Location: ' + d.Location + '\\n';\n  properties += 'Price: LKR ' + d['Price (LKR)'] + '\\n';\n  properties += 'Rooms: ' + d.Rooms + '\\n';\n  properties += 'Land: ' + d['Land Size (Perches)'] + ' perches\\n';\n  properties += 'Legal: ' + d['Legal Status'] + '\\n';\n  properties += 'GPS: ' + d['GPS Coordinates'] + '\\n';\n  properties += '---\\n';\n}\n\nconst chatInput = $('When chat message received').first().json.chatInput;\n\nreturn [{ json: { properties: properties, chatInput: chatInput } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -48
+      ],
+      "id": "1ab4c2f4-2645-4219-ab2f-d4695a7aa10e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.output }}",
+        "options": {
+          "memoryConnection": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        -48
+      ],
+      "id": "12c531f5-d09b-4738-98a9-83e89c29d6be",
+      "name": "Chat",
+      "webhookId": "071b8ac3-1867-4cb0-bbf4-cc699e24b921"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        -48
+      ],
+      "id": "d36c37bd-1911-4e4a-960a-299db8cf8774",
+      "name": "Wait",
+      "webhookId": "2cc2d9c1-16cd-4772-b3f5-8d730138bd47"
+    },
+    {
+      "parameters": {
+        "model": "groq/compound",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        288,
+        160
+      ],
+      "id": "2a80a75d-2ede-4fb7-8bd0-7c382d3c261f",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "wUGF0n4hT15vQtn2",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "32df3f60-c338-46e3-b049-8ef9d26e8ec4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "069cf9d92b3b82e228962f10ea7c8b321e7e909deeffbc2c0f58fd77c25e183f"
+  },
+  "id": "K17DSXdgbTC4AP4K",
+  "tags": []
+}
